@@ -1,0 +1,231 @@
+{
+  "_comment": "JSON-LD @context for Skill Graph v4 frontmatter. Maps authored fields to W3C standard vocabularies so a Skill Graph SKILL.md can be projected into RDF/OWL/SKOS consumers without changing the authoring surface.",
+  "_version": "2.0.0",
+  "_schema_version_target": 4,
+  "_references": {
+    "skos": "https://www.w3.org/TR/skos-reference/",
+    "owl": "https://www.w3.org/TR/owl2-overview/",
+    "dcterms": "https://www.dublincore.org/specifications/dublin-core/dcmi-terms/",
+    "prov": "https://www.w3.org/TR/prov-o/",
+    "spdx": "https://spdx.org/licenses/",
+    "schema": "https://schema.org/",
+    "fair": "https://www.nature.com/articles/sdata201618"
+  },
+  "_adr_anchors": {
+    "0001": "Initial SKOS-aligned predicate set (related/broader/narrower additions; adjacent deprecation).",
+    "0002": "JSON-LD @context coverage policy.",
+    "0006": "boundary stays canonical for routing-layer asymmetric handoff (sg:disjointOwnership); disjoint_with is a separate orthogonal relation for formal OWL class-disjointness (owl:disjointWith). Reverts the `boundary -> disjoint_with` rename proposed in ADR 0001 Decision #2."
+  },
+  "@context": {
+    "sg": "https://skillgraph.dev/vocab#",
+    "skos": "http://www.w3.org/2004/02/skos/core#",
+    "owl": "http://www.w3.org/2002/07/owl#",
+    "dcterms": "http://purl.org/dc/terms/",
+    "prov": "http://www.w3.org/ns/prov#",
+    "dcat": "http://www.w3.org/ns/dcat#",
+    "spdx": "http://spdx.org/rdf/terms#",
+    "schema": "https://schema.org/",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "name": "dcterms:identifier",
+    "description": "dcterms:description",
+    "version": "dcterms:hasVersion",
+    "schema_version": "sg:schemaVersion",
+    "owner": "dcterms:creator",
+    "license": {
+      "@id": "dcterms:license",
+      "@type": "@id",
+      "_note": "SPDX identifier; resolve against spdx:licenseId"
+    },
+    "freshness": {
+      "@id": "dcterms:modified",
+      "@type": "xsd:date"
+    },
+    "reviewed_at": {
+      "@id": "dcterms:modified",
+      "@type": "xsd:date"
+    },
+    "stability": "sg:stability",
+    "superseded_by": {
+      "@id": "prov:wasRevisionOf",
+      "@type": "@id",
+      "@reverse": false
+    },
+    "type": "sg:archetype",
+    "archetype": "sg:archetype",
+    "scope": "sg:scope",
+    "category": "sg:browseCategory",
+    "keywords": {
+      "@id": "dcat:keyword",
+      "@container": "@set"
+    },
+    "triggers": {
+      "@id": "sg:trigger",
+      "@container": "@set"
+    },
+    "examples": {
+      "@id": "sg:positiveExample",
+      "@container": "@set"
+    },
+    "anti_examples": {
+      "@id": "sg:negativeExample",
+      "@container": "@set"
+    },
+    "paths": {
+      "@id": "sg:pathGlob",
+      "@container": "@set"
+    },
+    "allowed-tools": "sg:allowedTools",
+    "allowed_tools": "sg:allowedTools",
+    "relations": "sg:relations",
+    "adjacent": {
+      "@id": "skos:related",
+      "@container": "@set",
+      "_note": "SKOS associative relation — symmetric, non-hierarchical"
+    },
+    "related": {
+      "@id": "skos:related",
+      "@container": "@set",
+      "_note": "v3.1 preferred alias for `adjacent`; same SKOS mapping"
+    },
+    "broader": {
+      "@id": "skos:broader",
+      "@container": "@set",
+      "_note": "Cross-skill generalisation — target is a more general skill"
+    },
+    "narrower": {
+      "@id": "skos:narrower",
+      "@container": "@set",
+      "_note": "Cross-skill specialisation — target is a more specific skill"
+    },
+    "boundary": {
+      "@id": "sg:disjointOwnership",
+      "@container": "@set",
+      "_note": "Routing-layer asymmetric handoff — directional. Canonical name for wrong-skill routing protection. Maps to sg:disjointOwnership, a Skill-Graph-specific predicate intentionally weaker than OWL class-disjointness — it makes a routing claim, not a formal ontological one. See ADR 0006."
+    },
+    "disjoint_with": {
+      "@id": "owl:disjointWith",
+      "@container": "@set",
+      "_note": "Formal OWL class-disjointness assertion — symmetric. Use only when authors genuinely want to claim that no entity can simultaneously be an instance of both classes. Distinct from `boundary` (which is a weaker routing-layer relation). See ADR 0006."
+    },
+    "verify_with": {
+      "@id": "prov:wasInformedBy",
+      "@container": "@set",
+      "_note": "PROV-O informational influence — verifier skill informed this skill's claims"
+    },
+    "depends_on": {
+      "@id": "dcterms:requires",
+      "@container": "@set"
+    },
+    "extends": {
+      "@id": "prov:wasDerivedFrom",
+      "@type": "@id",
+      "_note": "Overlay specialisation — PROV-O derivation relation"
+    },
+    "grounding": "sg:grounding",
+    "domain_object": "sg:domainObject",
+    "subject": "sg:domainObject",
+    "grounding_mode": "sg:groundingMode",
+    "claim_scope": "sg:groundingMode",
+    "truth_sources": {
+      "@id": "dcterms:source",
+      "@container": "@set",
+      "_note": "DCMI Source — resource from which the skill's claims are derived"
+    },
+    "failure_modes": {
+      "@id": "sg:failureMode",
+      "@container": "@set"
+    },
+    "evidence_priority": "sg:evidencePriority",
+    "drift_check": "sg:driftCheck",
+    "last_verified": {
+      "@id": "prov:generatedAtTime",
+      "@type": "xsd:date"
+    },
+    "verified_at": {
+      "@id": "prov:generatedAtTime",
+      "@type": "xsd:date"
+    },
+    "truth_source_hashes": {
+      "@id": "sg:truthSourceHash",
+      "_note": "Map of normalized truth-source key to SHA-256 hex digest. Complements prov:generatedAtTime with content-addressable evidence."
+    },
+    "concept": "sg:concept",
+    "comprehension_state": "sg:comprehensionState",
+    "eval_artifacts": "sg:evalArtifacts",
+    "eval_state": "sg:evalState",
+    "routing_eval": "sg:routingEval",
+    "eval": "sg:eval",
+    "artifacts": "sg:evalArtifacts",
+    "content_state": "sg:evalState",
+    "routing_coverage": "sg:routingEval",
+    "eval_last_run": "sg:evalLastRun",
+    "at": {
+      "@id": "prov:generatedAtTime",
+      "@type": "xsd:dateTime"
+    },
+    "status": "sg:evalRunStatus",
+    "runner": "sg:evalRunner",
+    "model": "sg:evalModel",
+    "receipt": "sg:evalReceipt",
+    "receipt_hash": "sg:evalReceiptHash",
+    "lifecycle": "sg:lifecycle",
+    "stale_after_days": {
+      "@id": "sg:staleAfterDays",
+      "@type": "xsd:integer"
+    },
+    "review_cadence": "sg:reviewCadence",
+    "runtime_telemetry": "sg:runtimeTelemetry",
+    "feedback_source": "sg:feedbackSource",
+    "last_updated": {
+      "@id": "dcterms:modified",
+      "@type": "xsd:date"
+    },
+    "metrics": "sg:telemetryMetrics",
+    "sample_size": {
+      "@id": "sg:sampleSize",
+      "@type": "xsd:integer"
+    },
+    "success_rate": {
+      "@id": "sg:successRate",
+      "@type": "xsd:double"
+    },
+    "compatibility": "sg:compatibility",
+    "runtimes": {
+      "@id": "sg:compatibleRuntime",
+      "@container": "@set"
+    },
+    "agent_runtimes": {
+      "@id": "sg:compatibleRuntime",
+      "@container": "@set"
+    },
+    "node": "sg:nodeVersion",
+    "node_version": "sg:nodeVersion",
+    "notes": "sg:compatibilityNotes",
+    "portability": "sg:portability",
+    "readiness": "sg:portabilityReadiness",
+    "targets": {
+      "@id": "sg:portabilityTarget",
+      "@container": "@set"
+    },
+    "export_targets": {
+      "@id": "sg:portabilityTarget",
+      "@container": "@set"
+    },
+    "urn": {
+      "@id": "@id",
+      "_note": "Globally-unique persistent identifier (urn:skill:<repo>:<name>). Unlocks FAIR Findability. Optional in v3, recommended for v4."
+    },
+    "domain": {
+      "@id": "skos:broader",
+      "_note": "Hierarchical slash-delimited domain path projects to a chain of skos:broader edges in RDF output"
+    },
+    "workspace_tags": {
+      "@id": "dcterms:audience",
+      "@container": "@set"
+    },
+    "routing_bundles": {
+      "@id": "sg:routingBundle",
+      "@container": "@set"
+    }
+  }
+}

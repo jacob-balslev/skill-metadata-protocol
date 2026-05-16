@@ -13,7 +13,7 @@ This repo contains the protocol specification, JSON schemas, and documentation o
 | Path | Purpose |
 |------|---------|
 | `SKILL_METADATA_PROTOCOL.md` | The full normative specification (field definitions, requirements, examples) |
-| `schemas/` | JSON Schema files — v2, v3, v4 pinned versions + unversioned current |
+| `schemas/` | JSON Schema files — v2, v3, v4, v5 pinned versions + unversioned current (tracks v5) |
 | `docs/` | Deep-dive documentation: field reference, primer, adoption guide, conformance, glossary, ADRs |
 | `examples/` | Authoring template and sample manifest |
 
@@ -34,7 +34,7 @@ const schema = require('@skill-graph/protocol/schemas/skill.schema.json');
 Or reference directly in your JSON Schema tooling:
 
 ```
-node_modules/@skill-graph/protocol/schemas/skill.v4.schema.json
+node_modules/@skill-graph/protocol/schemas/skill.v5.schema.json
 ```
 
 ## Quick start

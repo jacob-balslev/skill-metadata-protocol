@@ -1,7 +1,8 @@
 # Skill Metadata Protocol
 
-> **Version:** 1.1.0 (schema_version 4, Skill Graph 0.5.0)
-> **Machine-readable schema:** `schemas/skill.v4.schema.json`
+> **Version:** 1.2.0 (schema_version 5, Skill Graph 0.5.0)
+> **Machine-readable schema:** `schemas/skill.v5.schema.json` (v4 schema remains for back-compat reads via `normalizeFrontmatter()`)
+> **Migration from v4:** `docs/migrations/v4-to-v5.md`
 > **Detailed field reference:** `docs/field-reference.md`
 > **Full semantics + design rationale:** `docs/skill-metadata-protocol.md`
 
@@ -32,7 +33,7 @@ This document is the top-level public contract for the Skill Metadata Protocol f
 
 ## Overview
 
-Every skill is a single `SKILL.md` file with a YAML frontmatter block. The frontmatter is validated by `skill-lint.js` against `schemas/skill.v4.schema.json`. The `generate-manifest.js` script reads frontmatter from all skill files and emits a single `skills.manifest.json`.
+Every skill is a single `SKILL.md` file with a YAML frontmatter block. The frontmatter is validated by `skill-lint.js` against `schemas/skill.v5.schema.json`. The `generate-manifest.js` script reads frontmatter from all skill files and emits a single `skills.manifest.json`.
 
 The contract has one runtime model: one `SKILL.md` per skill, one manifest, one lint pass. There is no closed/open split, no private control plane, and no enterprise-only fields.
 
@@ -46,12 +47,12 @@ All thirteen fields in this group are required. A skill missing any of them fail
 
 | Field | Type | Purpose |
 |---|---|---|
-| `schema_version` | integer `4` | Signals the contract version. Must be `4` for all v4 skills. |
+| `schema_version` | integer `5` | Signals the contract version. Must be `5` for all v5 skills. See `docs/migrations/v4-to-v5.md`. |
 | `name` | string | Stable identifier. Used for routing and `relations.*` targets. |
 | `description` | string (≥20 chars) | Routing contract — tells the router when to activate this skill. |
 | `version` | semver string | Skill content version (e.g. `1.2.0`). Bumped by the author. |
 | `type` | enum | One of: `capability`, `workflow`, `router`, `overlay`. |
-| `category` | string | Flat human browse bucket (e.g. `knowledge`, `engineering`, `quality`). |
+| `category` | enum | Browse facet. One of: `foundations`, `engineering`, `design`, `quality`, `agent`, `product`. See § Classification for the foundations-gate. |
 | `scope` | enum | One of: `codebase`, `reference`, `portable`. |
 | `owner` | string | Team, username, or tool that is responsible for keeping this skill current. |
 | `freshness` | ISO date | Date the skill body was last reviewed or updated. |
@@ -144,10 +145,10 @@ allowed-tools   # space-separated tool allowlist
 - `portable` — cross-repo knowledge, intended for distribution via `portability.targets`.
 
 **`category`**
-- A flat string used for human browsing (e.g. sidebar navigation in a skill library UI).
-- Renamed from v3 `browse_category`; use `category` in all v4 skills.
+- A browse facet — answers the single question: *Where should a human browse to find this skill first?*
+- Renamed from v3 `browse_category`; use `category` in all v4+ skills.
 - For hierarchical taxonomy, use the optional `domain` field with slash-delimited segments.
-- **Closed enum as of 2026-05-15** (enforced by `scripts/lint/check-category-enum.js`, lint check 13). The schema field type remains `string` for back-compat; the **policy** layer narrows to exactly six values, framed as a browse facet, not ontology truth:
+- **Closed enum as of schema_version 5** (enforced at the schema level by `enum` constraint in `schemas/skill.v5.schema.json` AND at the lint level by `scripts/lint/check-category-enum.js`). Framed as a browse facet, not ontology truth. Cross-cutting truth lives in `relations.related`. The six values:
 
   | Value | Definition |
   |---|---|
@@ -395,7 +396,31 @@ Some legacy scope and type values are normalized by the manifest generator to th
 
 ## Migration Notes
 
-### v3 -> v4 (current)
+### v4 -> v5 (current)
+
+Detailed migration guide: [`docs/migrations/v4-to-v5.md`](docs/migrations/v4-to-v5.md).
+
+The codemod for the schema_version bump (after re-routing categories):
+
+```bash
+cd /Users/jacobbalslev/Development/skills
+find skills -name SKILL.md -exec sed -i '' 's/schema_version: "4"/schema_version: "5"/g' {} +
+```
+
+| What changed | v4 form | v5 form |
+|---|---|---|
+| Schema version | `schema_version: 4` | `schema_version: 5` |
+| Schema file | `schemas/skill.v4.schema.json` (open-ended `category` string) | `schemas/skill.v5.schema.json` (closed `category` enum of 6 values) |
+| `category` enum | open-ended string; values included `knowledge`, `frontend`, `ai-engineering`, `integration`, `integrations`, `data`, `workflow`, `security` | closed enum: `foundations` \| `engineering` \| `design` \| `quality` \| `agent` \| `product` |
+| `foundations` gate | implicit | explicit anti-junk-drawer rule: target 8–15 skills; cannot default here; must clear epistemic-precondition test |
+| `quality` framing | one of several categories | promoted to 6th category for property-as-category (a11y, perf, security, testing, type-safety, observability) per A′ Rule 2 |
+| `agent` naming | also seen as `ai-engineering` | canonical `agent` |
+| Concept-shape adoption | "social recognition" criterion | 4-condition evidence-based: scope ∈ {portable, reference} AND type = capability AND ≥2 external grounding sources AND concept block contains no repo-specific nouns |
+| Skill name policy | banned-verb-prefix lint | head-noun glossary (`docs/head-noun-glossary.md`) + `allowed_exceptions` registry (`docs/name-exceptions.yaml`) with citations |
+
+The v5 category enum was already applied across 137 live skills in skill-graph commit `210ac69` (2026-05-16). The Phase 0b sample-migration review at `skill-graph/docs/migration-sample-review.md` (2026-05-16) recorded 86.67% reviewer-agreement, passing the 85% gate.
+
+### v3 -> v4 (historical)
 
 Run the codemod to migrate in place: `node scripts/migrate-skill-v3-to-v4.js <path>`
 

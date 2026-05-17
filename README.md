@@ -15,7 +15,12 @@ This repo contains the protocol specification, JSON schemas, and documentation o
 | `SKILL_METADATA_PROTOCOL.md` | The full normative specification (field definitions, requirements, examples) |
 | `schemas/` | JSON Schema files — v2, v3, v4, v5, v6 pinned versions + unversioned current (tracks v6) |
 | `docs/` | Deep-dive documentation: field reference, primer, adoption guide, conformance, glossary, ADRs |
+| `docs/migrations/` | Per-bump author migration procedures (currently v3→v4, v4→v5, v5→v6) |
+| `docs/adr/` | Architecture Decision Records — including [ADR 0007](docs/adr/0007-version-source-of-truth.md) on the cross-repo version source of truth |
+| `CHANGELOG.md` | npm package version history (`@skill-graph/protocol`) |
 | `examples/` | Authoring template and sample manifest |
+
+> **Version authority:** The current `schema_version` is the highest pinned schema file in `schemas/skill.vN.schema.json` — currently `skill.v6.schema.json`. The npm package version is in `package.json`. See [ADR 0007](docs/adr/0007-version-source-of-truth.md) for the dual-versioning model used across the four sibling repos.
 
 ## Related repos
 

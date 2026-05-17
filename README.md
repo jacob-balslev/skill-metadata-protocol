@@ -22,6 +22,8 @@ This repo contains the protocol specification, JSON schemas, and documentation o
 
 > **Version authority:** The current `schema_version` is the highest pinned schema file in `schemas/skill.vN.schema.json` — currently `skill.v6.schema.json`. The npm package version is in `package.json`. See [ADR 0007](docs/adr/0007-version-source-of-truth.md) for the dual-versioning model used across the four sibling repos.
 
+> **Surface scope:** The v6 contract targets the OSS-portable canonical library. Personal and tenant-specific surfaces are out of scope and not subject to v6 migration — see [skill-graph ADR 0008](https://github.com/jacob-balslev/skill-graph/blob/main/docs/adr/0008-skill-surface-split-and-curation-policy.md).
+
 ## Related repos
 
 | Repo | Purpose |

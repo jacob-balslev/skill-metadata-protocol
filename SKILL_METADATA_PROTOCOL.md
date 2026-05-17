@@ -1,7 +1,8 @@
 # Skill Metadata Protocol
 
-> **Version:** 1.2.0 (schema_version 5, Skill Graph 0.5.0)
-> **Machine-readable schema:** `schemas/skill.v5.schema.json` (v4 schema remains for back-compat reads via `normalizeFrontmatter()`)
+> **Version:** 1.3.0 (schema_version 6, Skill Graph 0.6.0)
+> **Machine-readable schema:** `schemas/skill.v6.schema.json` (v4 and v5 schemas remain for back-compat reads via `normalizeFrontmatter()`)
+> **Migration from v5:** `docs/migrations/v5-to-v6.md`
 > **Migration from v4:** `docs/migrations/v4-to-v5.md`
 > **Detailed field reference:** `docs/field-reference.md`
 > **Full semantics + design rationale:** `docs/skill-metadata-protocol.md`
@@ -33,7 +34,7 @@ This document is the top-level public contract for the Skill Metadata Protocol f
 
 ## Overview
 
-Every skill is a single `SKILL.md` file with a YAML frontmatter block. The frontmatter is validated by `skill-lint.js` against `schemas/skill.v5.schema.json`. The `generate-manifest.js` script reads frontmatter from all skill files and emits a single `skills.manifest.json`.
+Every skill is a single `SKILL.md` file with a YAML frontmatter block. The frontmatter is validated by `skill-lint.js` against `schemas/skill.v6.schema.json`. The `generate-manifest.js` script reads frontmatter from all skill files and emits a single `skills.manifest.json`.
 
 The contract has one runtime model: one `SKILL.md` per skill, one manifest, one lint pass. There is no closed/open split, no private control plane, and no enterprise-only fields.
 
@@ -47,7 +48,7 @@ All thirteen fields in this group are required. A skill missing any of them fail
 
 | Field | Type | Purpose |
 |---|---|---|
-| `schema_version` | integer `5` | Signals the contract version. Must be `5` for all v5 skills. See `docs/migrations/v4-to-v5.md`. |
+| `schema_version` | integer `6` | Signals the contract version. Must be `6` for all v6 skills. See `docs/migrations/v5-to-v6.md`. |
 | `name` | string | Stable identifier. Used for routing and `relations.*` targets. |
 | `description` | string (≥20 chars) | Routing contract — tells the router when to activate this skill. |
 | `version` | semver string | Skill content version (e.g. `1.2.0`). Bumped by the author. |
@@ -100,8 +101,22 @@ portability     # { readiness, targets }
 lifecycle       # { stale_after_days, review_cadence }
 runtime_telemetry  # { feedback_source, metrics }
 comprehension_state # absent | present
-concept        # seven-field concept teaching block, required when comprehension_state: present
-eval_last_run  # { at, status, runner?, model?, receipt?, receipt_hash? }
+# Understanding fields (v6+, flat) — required when comprehension_state: present
+mental_model    # string — primitives and their relationships
+purpose         # string — the problem this concept solves
+boundary        # string — what this concept is NOT (with mechanism, not just label)
+analogy         # string — one-sentence metaphor preserving the core mechanism
+misconception   # string — the wrong mental model people bring
+concept         # DEPRECATED in v6 — legacy v5 nested block; back-compat only
+# Health Block (v6+, flat) — written by the audit loop, not hand-authored
+last_audited    # ISO date — when `audit` last ran
+last_changed    # ISO date — when the SKILL.md was last edited
+audit_verdict   # PASS | PASS_WITH_FIXES | PARTIAL | FAIL | UNKNOWN
+eval_score      # number 0.0–5.0 — latest aggregate eval grade
+eval_failed_ids # string[] — failing eval IDs (empty when clean)
+lint_verdict    # PASS | FAIL | UNKNOWN
+drift_status    # OK | DRIFT | BROKEN | STALE | NO_BASELINE | EXTERNAL_UNHASHED | UNKNOWN
+eval_last_run   # { at, status, runner?, model?, receipt?, receipt_hash? }
 compatibility   # { runtimes, node, notes }
 allowed-tools   # space-separated tool allowlist
 ```
@@ -148,7 +163,7 @@ allowed-tools   # space-separated tool allowlist
 - A browse facet — answers the single question: *Where should a human browse to find this skill first?*
 - Renamed from v3 `browse_category`; use `category` in all v4+ skills.
 - For hierarchical taxonomy, use the optional `domain` field with slash-delimited segments.
-- **Closed enum as of schema_version 5** (enforced at the schema level by `enum` constraint in `schemas/skill.v5.schema.json` AND at the lint level by `scripts/lint/check-category-enum.js`). Framed as a browse facet, not ontology truth. Cross-cutting truth lives in `relations.related`. The six values:
+- **Closed enum as of schema_version 5** (retained in v6); enforced at the schema level by `enum` constraint in `schemas/skill.v6.schema.json` AND at the lint level by `scripts/lint/check-category-enum.js`. Framed as a browse facet, not ontology truth. Cross-cutting truth lives in `relations.related`. The six values:
 
   | Value | Definition |
   |---|---|
@@ -213,18 +228,88 @@ The three eval-health fields are orthogonal — they measure different dimension
 **`comprehension_state`**
 - Optional comprehension-grading axis.
 - `absent` or omitted: no comprehension grading is declared.
-- `present`: the skill has comprehension grading and must include `concept`.
+- `present`: the skill has comprehension grading and must populate either the **five flat Understanding fields** (`mental_model`, `purpose`, `boundary`, `analogy`, `misconception` — preferred in v6) OR the legacy nested `concept` block (v5 back-compat).
+- The v6 schema's `allOf` rule enforces this via an `anyOf` clause: at least one of the two shapes must be present. When both are present, the flat fields win.
 
-**`concept`**
-- Seven-field concept teaching block required when `comprehension_state: present`.
-- Required sub-fields: `definition`, `mental_model`, `purpose`, `boundary`, `taxonomy`, `analogy`, `misconception`.
-- Use it for universal subject comprehension; keep repo-specific procedure in the body.
+### Understanding (v6+, flat)
+
+Five flat top-level fields that teach the agent what the skill's subject *is*. They replace the v5 nested `concept` block (which retired the `definition` and `taxonomy` sub-fields: `definition` is now covered by `description`, `taxonomy` by `category` + `relations.broader`). The body's `## Concept Card` section is retired in v6 — the flat frontmatter fields are the canonical location.
+
+Required when `comprehension_state: present`. No protocol length cap on any of these — author each field as deeply as the concept requires.
+
+**`mental_model`**
+- Primitives and their relationships. Name the primitives. Name the relationships between them. Markdown permitted inside the string.
+- Graded by the comprehension grader's `mental_model` dimension (weight 1.5).
+- Distinct from `## Philosophy` in the body, which explains *why this skill file exists in this repo*; `mental_model` explains *what the subject is, universally*.
+
+**`purpose`**
+- What problem the concept solves AND the alternative it replaced. Concrete pain point + prior alternative.
+- Graded by the comprehension grader's `purpose` dimension (weight 1.0).
+
+**`boundary`** (the Understanding field — distinct from `relations.boundary`)
+- Things commonly confused with the concept but that are NOT it. Express each difference as a *mechanism* (different primitives, different purpose, different scope) — not just different names.
+- Graded by the comprehension grader's `boundary` dimension (weight 1.5).
+- Field-name collision with `relations.boundary` is intentional and disambiguated by nesting depth: top-level `boundary` is a string teaching the concept's edges; `relations.boundary` is an array of skill-name handoff targets.
+
+**`analogy`**
+- One-sentence analogy that preserves the core mechanism. Translate for a non-expert without breaking the structural relationship between primitives.
+- Graded by the comprehension grader's `analogy` dimension (weight 0.5).
+
+**`misconception`**
+- The wrong mental model people bring and why it misleads. Authored hint to inoculate the agent against the common error trap.
+- Not directly graded; complements `boundary`.
+
+**`concept`** (DEPRECATED in v6 — accepted for v5 back-compat)
+- Legacy nested teaching block with seven sub-fields: `definition`, `mental_model`, `purpose`, `boundary`, `taxonomy`, `analogy`, `misconception`.
+- Remains accepted for v5 skills not yet migrated. Lint emits a warning when `concept` is populated but the flat Understanding fields are absent and `schema_version: 6` is set.
+- The comprehension grader reads either location; flat fields win when both are present.
 
 **`eval_last_run`**
 - Optional evidence receipt for the most recent eval run.
 - Required sub-fields when present: `at` (ISO date-time) and `status` (`pass`, `fail`, or `mixed`).
 - Optional sub-fields: `runner`, `model`, `receipt`, `receipt_hash`.
 - Use this to support `eval_state: passing` or `eval_state: monitored` with a concrete scorecard, grader history, or CI receipt.
+
+### Health Block (v6+, flat — written by the audit loop)
+
+Seven flat top-level fields that record a skill's audit fingerprint in its own frontmatter, replacing the scattered log-file model of v5 (`eval-history.jsonl`, `routing-misses.jsonl`, `.opencode/progress/skill-audit-*`, `health-ledger.jsonl`, `findings/*.md`). The Skill Audit Loop reads these directly; no log-file crawl required.
+
+**Do not hand-author these fields.** They are stamped by `scripts/skill/skill-audit.js`, `scripts/skill/evaluate-skill.js`, and `scripts/skill-graph-drift.js` as the audit loop runs. Hand-edits will be overwritten on the next `audit` run.
+
+**`last_audited`**
+- ISO date (YYYY-MM-DD) the `audit` command last ran against this skill.
+- Loop priority uses this to pick the stalest skill next.
+- Distinct from `freshness` (the author's claim of content-level review) and `drift_check.last_verified` (the truth-source verification timestamp).
+
+**`last_changed`**
+- ISO date (YYYY-MM-DD) the SKILL.md body or frontmatter was last edited.
+- Written automatically by `improve` operations.
+- Distinct from `freshness` (review claim) — `last_changed` is the editor's footprint, `freshness` is the reviewer's footprint.
+
+**`audit_verdict`**
+- Aggregate result of the most recent `audit` run.
+- Enum: `PASS` | `PASS_WITH_FIXES` | `PARTIAL` | `FAIL` | `UNKNOWN`.
+- Combines `lint_verdict`, `drift_status`, and (when run with `--graded`) the seven dimension scores.
+- `UNKNOWN` is the initial state before any audit has run.
+
+**`eval_score`**
+- Latest aggregate eval grade on a 0.0–5.0 scale.
+- Written by `scripts/skill/evaluate-skill.js`.
+- When `evals/comprehension.json` exists, the comprehension grader's score lands here; otherwise the standard eval-suite score.
+
+**`eval_failed_ids`**
+- String array of eval IDs that failed in the most recent run. Empty array when clean.
+- Populated alongside `eval_score` by the eval runner.
+
+**`lint_verdict`**
+- Result of the most recent deterministic-lint pass.
+- Enum: `PASS` | `FAIL` | `UNKNOWN`.
+- `PASS` means zero lint errors; warnings do not flip the verdict.
+
+**`drift_status`**
+- Current truth-source drift status, mirroring `scripts/skill-graph-drift.js` sentinel verdicts.
+- Enum: `OK` | `DRIFT` | `BROKEN` | `STALE` | `NO_BASELINE` | `EXTERNAL_UNHASHED` | `UNKNOWN`.
+- Written by the drift sentinel; read by the loop to prioritise re-grounding work.
 
 ### Activation and Routing
 
@@ -277,10 +362,20 @@ relations:
 - Maximum 5 entries recommended to avoid hub-and-spoke clutter.
 - `adjacent` is a deprecated alias from v3.0. Use `related` in all new skills. Lint emits a warning on `adjacent`.
 
-**`boundary`**
+**`boundary`** (the routing-layer field — distinct from the top-level Understanding `boundary` field)
 - Routing-layer anti-ownership handoff. Use to make explicit that this skill does NOT own the target concern and should hand near-miss prompts to another skill.
 - Items may be bare skill names or `{ skill, reason }` objects. Reasons are strongly recommended.
 - This is a Skill-Graph-specific routing predicate, not formal OWL class disjointness.
+
+**Runtime semantic — score-aware exclusion-on-tie.** The runtime router applies `relations.boundary[]` as `if (target.score >= declarer.score) skip target` — i.e. the declarer can exclude the target only when the declarer is *currently outscoring* it on the query. The semantic INVERTS the surface reading "I am NOT B; defer to B" — boundary entries protect the declarer's wins, not the target's wins. (Source: `skill-graph/scripts/skill-graph-route.js:548`.)
+
+**Cross-domain boundary doctrine — SAME-DOMAIN ONLY.** Codified 2026-05-17 after the Tier C″ empirical sweep across 8 Wave 6 skills:
+
+1. `boundary[]` entries should declare SAME-DOMAIN handoffs only (same `category` AND same `domain` sub-tree). Example: `engineering/frontend` ↔ `engineering/frontend` is fine; `engineering/frontend` ↔ `design/component-systems` is not.
+2. Cross-category or cross-sub-domain handoffs belong in `anti_examples` + `relations.related`, NOT in `boundary[]`. The `anti_examples` array preserves routing-visible documentation as wrong-use phrases; `relations.related` signals the semantic adjacency without invoking the score-aware exclusion mechanic.
+3. Empirical justification: removing 16 cross-domain `boundary[]` entries across 8 skills caused **0 top-1 routing changes** on the 30-query baseline; only 3/30 low-confidence unmaskings of legitimate alternatives at score 3 surfaced. The cross-domain entries were performing silent low-confidence exclusion only — exactly the silent-failure risk the doctrine prevents.
+
+Authors who introduce a cross-domain `boundary[]` entry must move it to `anti_examples` + `relations.related` instead. Lint (planned, not yet implemented) will warn on cross-domain boundary declarations.
 
 **`disjoint_with`**
 - Formal class-disjointness assertion. Use only when the two skill concepts are genuinely disjoint in the ontology sense.
@@ -354,15 +449,29 @@ grounding:
 
 ### Authored in `SKILL.md` (human-written)
 
-All 36 canonical fields in the frontmatter are authored. No field is computed during the lint or manifest generation steps and written back into the source file, with one exception: `drift_check.truth_source_hashes` is computed and written by the drift sentinel when you run `skill-graph drift --record --apply`.
+The canonical fields in the frontmatter are authored by humans, with two exceptions: `drift_check.truth_source_hashes` is computed by the drift sentinel (`skill-graph drift --record --apply`), and the seven **Health Block** fields (`last_audited`, `last_changed`, `audit_verdict`, `eval_score`, `eval_failed_ids`, `lint_verdict`, `drift_status`) are stamped automatically by the Skill Audit Loop's `audit`, `improve`, and `evaluate` operations. Do not hand-author the Health Block — those values are owned by the loop.
+
+**Human-authored fields:**
 
 ```
 schema_version, name, urn, description, version, type, category,
-category, scope, owner, freshness, drift_check, eval_artifacts, eval_state,
-routing_eval, comprehension_state, concept, eval_last_run, stability,
+domain, scope, owner, freshness, drift_check, eval_artifacts, eval_state,
+routing_eval, comprehension_state, eval_last_run, stability,
 superseded_by, license, compatibility, allowed-tools, extends, triggers,
 keywords, examples, anti_examples, paths, workspace_tags, routing_bundles,
-relations, grounding, portability, lifecycle, runtime_telemetry
+relations, grounding, portability, lifecycle, runtime_telemetry,
+# Understanding (v6+) — author these when comprehension_state: present
+mental_model, purpose, boundary, analogy, misconception,
+# Legacy v5 — accepted for back-compat
+concept
+```
+
+**Loop-written fields (v6+, Health Block):**
+
+```
+# Stamped by `audit` / `improve` / `evaluate` — do not hand-author
+last_audited, last_changed, audit_verdict, eval_score, eval_failed_ids,
+lint_verdict, drift_status
 ```
 
 ### Generated in `skills.manifest.json` (tooling-computed)
@@ -396,7 +505,29 @@ Some legacy scope and type values are normalized by the manifest generator to th
 
 ## Migration Notes
 
-### v4 -> v5 (current)
+### v5 -> v6 (current)
+
+Detailed migration guide: [`docs/migrations/v5-to-v6.md`](docs/migrations/v5-to-v6.md).
+
+The codemod for the schema_version bump (after authoring the flat Understanding fields):
+
+```bash
+cd /Users/jacobbalslev/Development/skills
+find skills -name SKILL.md -exec sed -i '' 's/schema_version: "5"/schema_version: "6"/g' {} +
+```
+
+| What changed | v5 form | v6 form |
+|---|---|---|
+| Schema version | `schema_version: 5` | `schema_version: 6` |
+| Schema file | `schemas/skill.v5.schema.json` | `schemas/skill.v6.schema.json` (v5 schema retained for back-compat reads) |
+| Concept teaching block | nested `concept: { definition, mental_model, purpose, boundary, taxonomy, analogy, misconception }` | five flat top-level fields: `mental_model`, `purpose`, `boundary`, `analogy`, `misconception`. `definition` is covered by `description`; `taxonomy` is covered by `category` + `relations.broader`. Body `## Concept Card` section retired. |
+| Health Block | absent — audit fingerprint scattered across `eval-history.jsonl`, `routing-misses.jsonl`, `health-ledger.jsonl`, `.opencode/progress/skill-audit-*`, `findings/*.md` | seven flat top-level fields stamped by the audit loop: `last_audited`, `last_changed`, `audit_verdict`, `eval_score`, `eval_failed_ids`, `lint_verdict`, `drift_status` |
+| `comprehension_state: present` rule | required nested `concept` block | requires EITHER the five flat Understanding fields OR (for v5 back-compat) the nested `concept` block — enforced via `anyOf` clause in v6 schema's `allOf` rule |
+| Cross-domain `relations.boundary[]` | implicit "I am NOT B; defer to B" reading | codified as silent-failure risk; cross-domain entries belong in `anti_examples` + `relations.related` (see § Relations § `boundary`) |
+
+The legacy nested `concept` block remains accepted in v6 for v5 skills not yet migrated. The comprehension grader reads either location; flat fields win when both are present.
+
+### v4 -> v5 (previous)
 
 Detailed migration guide: [`docs/migrations/v4-to-v5.md`](docs/migrations/v4-to-v5.md).
 
@@ -475,4 +606,4 @@ The contract enforces the following invariants. Any change to the schema or tool
 
 ---
 
-*See `docs/skill-metadata-protocol.md` for full design rationale, overlay composition precedence, and schema versioning policy. See `docs/field-reference.md` for one section per field with examples. See `schemas/skill.v4.schema.json` for the machine-enforceable version of this contract.*
+*See `docs/skill-metadata-protocol.md` for full design rationale, overlay composition precedence, and schema versioning policy. See `docs/field-reference.md` for one section per field with examples. See `schemas/skill.v6.schema.json` for the machine-enforceable version of this contract.*

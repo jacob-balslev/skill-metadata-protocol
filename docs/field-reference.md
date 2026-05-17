@@ -481,34 +481,35 @@ routing_eval: absent
 | Value | Meaning |
 |---|---|
 | `absent` | No comprehension grading is declared |
-| `present` | A comprehension eval exists and the `concept` block is required |
+| `present` | A comprehension eval exists and the Understanding fields are required |
 
 **Rules.**
-- Optional in v3. Omitted means `absent`.
+- Optional. Omitted means `absent`.
 - Independent of `routing_eval` and `eval_state`.
-- `present` requires the top-level `concept` block by schema rule.
+- v6: `present` requires EITHER the five flat Understanding fields (`mental_model`, `purpose`, `boundary`, `analogy`, `misconception`) OR (for v5 back-compat) the nested `concept` block. Enforced via `anyOf` clause in the schema's `allOf` rule.
 
 **Example.**
 ```yaml
 comprehension_state: present
 ```
 
-**When to use.** Use `present` only when the skill has a real comprehension eval and a filled concept teaching block.
+**When to use.** Use `present` only when the skill has a real comprehension eval and populated Understanding fields.
 
 **When NOT to use.** Do not set `present` for skills that only have routing examples or general eval artifacts.
 
 ---
 
-## `concept`
+## `concept` (DEPRECATED in v6)
 
-**Purpose.** Seven-field teaching block for the skill's subject. It gives graders and agents a direct concept model: what the subject is, how to think about it, why it exists, what it is not, where it sits near other concepts, a useful analogy, and the common misconception to avoid.
+**Status.** Deprecated in schema_version 6. The seven sub-fields are promoted to flat top-level fields: `mental_model`, `purpose`, `boundary`, `analogy`, `misconception` (the retired `definition` is covered by `description`; the retired `taxonomy` is covered by `category` + `relations.broader`). The body `## Concept Card` section is also retired. The legacy nested block remains accepted for v5 skills not yet migrated; the comprehension grader reads either location, flat fields win when both are present. See [`migrations/v5-to-v6.md`](migrations/v5-to-v6.md).
 
-**Rules.**
-- Required when `comprehension_state: present`.
+**Purpose (legacy).** Seven-field teaching block for the skill's subject. It gave graders and agents a direct concept model: what the subject is, how to think about it, why it exists, what it is not, where it sits near other concepts, a useful analogy, and the common misconception to avoid.
+
+**Rules (legacy).**
 - Object with required `definition`, `mental_model`, `purpose`, `boundary`, `taxonomy`, `analogy`, and `misconception`.
 - Keep this about the universal subject. The body `## Philosophy` explains why this skill exists in this repo.
 
-**Example.**
+**Example (legacy).**
 ```yaml
 concept:
   definition: "Relational mapping is the practice of translating domain relationships into durable data structures."
@@ -520,9 +521,7 @@ concept:
   misconception: "A table diagram is not a domain model unless the relationships have domain meaning."
 ```
 
-**When to use.** Skills whose subject needs concept transfer, not just procedural steps.
-
-**When NOT to use.** Pure execution wrappers where the body already contains all needed operational instruction and no concept grader exists.
+**Migration to v6.** See the new flat-field reference sections below: [`mental_model`](#mental_model), [`purpose`](#purpose), [`boundary`](#boundary), [`analogy`](#analogy), [`misconception`](#misconception).
 
 ---
 
@@ -1198,3 +1197,322 @@ runtime_telemetry:
 **When to use.** When a telemetry pipeline actually exists for this skill and produces receipts the router or auditor can consume.
 
 **When NOT to use.** Speculative feedback-source paths that do not yet exist. An empty `feedback_source` is worse than an absent block — it promises data that isn't there.
+
+---
+
+# v6 Additions — Understanding Fields
+
+The five flat Understanding fields below replace the v5 nested `concept` block. They are required when `comprehension_state: present` (in v6 — the v5 nested `concept` block also satisfies the requirement for back-compat). No protocol length cap on any of them — author each field as deeply as the concept requires.
+
+---
+
+## `mental_model`
+
+**Purpose.** Primitives and their relationships. Names the primitives. Names the relationships between them. Replaces nested `concept.mental_model` in v6.
+
+**Rules.**
+- Required when `comprehension_state: present` (along with the other four flat Understanding fields) — or use the legacy nested `concept` block for v5 back-compat.
+- String. Markdown permitted inside the string.
+- Graded by the comprehension grader's `mental_model` dimension (weight 1.5 — highest weight alongside `boundary`).
+- Distinct from `## Philosophy` in the body. `## Philosophy` explains *why this skill file exists in this repo*. `mental_model` explains *what the subject is, universally*.
+
+**Example.**
+```yaml
+mental_model: |
+  Relational mapping is built from five primitives — entities, attributes, cardinality,
+  optionality, and ownership — and the relationships between them are encoded as either
+  foreign-key references (the column-pointer model) or as cross-tables (the join-row model).
+  The choice of representation depends on the cardinality and the lifecycle ownership of
+  the relationship, not on the surface shape of the data.
+```
+
+**When to use.** Always when `comprehension_state: present`. The mental_model field is what teaches the agent how to *think* about the concept.
+
+**When NOT to use.** Skills with `comprehension_state: absent` — the field is meaningless without a comprehension grader.
+
+---
+
+## `purpose`
+
+**Purpose.** What problem the concept solves AND the alternative it replaced. Replaces nested `concept.purpose` in v6.
+
+**Rules.**
+- Required when `comprehension_state: present` (along with the other four flat Understanding fields).
+- String. Markdown permitted.
+- Graded by the comprehension grader's `purpose` dimension (weight 1.0).
+- Should name a concrete pain point AND the prior alternative — both halves matter.
+
+**Example.**
+```yaml
+purpose: |
+  Relational mapping prevents persistence shape from smuggling in a false domain model.
+  Before relational mapping discipline, teams encoded relationships through naming
+  conventions and tribal knowledge — a `customer_id` column on the `orders` table meant
+  "this order belongs to this customer" only because the team agreed it did. Relational
+  mapping makes that agreement structural and enforceable.
+```
+
+**When to use.** Always when `comprehension_state: present`.
+
+**When NOT to use.** Skills where the subject has no clear problem-it-solves narrative (rare — if you can't write the purpose, the skill probably shouldn't claim comprehension grading).
+
+---
+
+## `boundary` (Understanding field — distinct from `relations.boundary`)
+
+**Purpose.** Things commonly confused with the concept but that are NOT it. Replaces nested `concept.boundary` in v6.
+
+**Rules.**
+- Required when `comprehension_state: present` (along with the other four flat Understanding fields).
+- String. Markdown permitted.
+- Graded by the comprehension grader's `boundary` dimension (weight 1.5 — highest weight alongside `mental_model`).
+- Express each difference as a *mechanism* (different primitives, different purpose, different scope) — not just different names. A boundary that says "X is not Y" without explaining the structural difference fails the grader.
+- Field-name collision with `relations.boundary` is intentional and disambiguated by nesting depth. Top-level `boundary` is a STRING teaching the concept's edges. `relations.boundary` is an ARRAY of skill-name handoff targets.
+
+**Example.**
+```yaml
+boundary: |
+  Relational mapping is NOT database tuning (which is about index design and query performance,
+  not about whether the relationships are correctly named). It is NOT UI information architecture
+  (which decides what to show on screen, not what relationships exist in the data layer). It is
+  also NOT API envelope design (which decides how relationships are encoded over the wire, not
+  whether they exist in the model). Each of these adjacent concerns operates on a *different
+  primitive*: tuning operates on indexes, IA operates on screens, envelope design operates on
+  serialization. Relational mapping operates on the entity-relationship graph itself.
+```
+
+**When to use.** Always when `comprehension_state: present`. The boundary field is what protects the agent from over-applying the skill.
+
+**When NOT to use.** Skills with `comprehension_state: absent`.
+
+---
+
+## `analogy`
+
+**Purpose.** One-sentence analogy that preserves the core mechanism. Replaces nested `concept.analogy` in v6.
+
+**Rules.**
+- Required when `comprehension_state: present` (along with the other four flat Understanding fields).
+- String. One sentence is the target; multi-sentence is acceptable but reduces grader signal.
+- Graded by the comprehension grader's `analogy` dimension (weight 0.5 — lowest weight, but still scored).
+- The analogy must translate for a non-expert without breaking the structural relationship between primitives. A loose "X is like Y in some vague way" analogy fails the grader.
+
+**Example.**
+```yaml
+analogy: |
+  Relational mapping is like drawing load-bearing walls before choosing interior paint —
+  the structural decisions constrain everything downstream, and changing them later costs
+  far more than getting them right up front.
+```
+
+**When to use.** Always when `comprehension_state: present`.
+
+**When NOT to use.** Skills with `comprehension_state: absent`.
+
+---
+
+## `misconception`
+
+**Purpose.** The wrong mental model people bring and why it misleads. Replaces nested `concept.misconception` in v6.
+
+**Rules.**
+- Required when `comprehension_state: present` (along with the other four flat Understanding fields).
+- String. Markdown permitted.
+- Not directly graded — but complements `boundary`. The misconception field is an authored hint to inoculate the agent against the common error trap.
+- Should name a specific wrong model AND explain why it misleads — both halves matter.
+
+**Example.**
+```yaml
+misconception: |
+  The most common misconception is that a table diagram (an ER diagram drawn in dbdiagram.io
+  or a Postgres `\d+` dump) is a domain model. It is not. A table diagram is a *persistence
+  shape*; a domain model is a *meaning structure*. The same set of tables can encode many
+  different domain models depending on how the relationships are NAMED and how the lifecycle
+  is OWNED — and most importantly, two domain models that share a persistence shape can be
+  semantically incompatible. The diagram does not save you from the relationship-naming work.
+```
+
+**When to use.** Always when `comprehension_state: present`. The misconception field is one of the highest-value teaching surfaces because it pre-empts the most common failure mode.
+
+**When NOT to use.** Skills with `comprehension_state: absent`.
+
+---
+
+# v6 Additions — Health Block
+
+The seven flat Health Block fields below are stamped automatically by the Skill Audit Loop (`scripts/skill/skill-audit.js`, `scripts/skill/evaluate-skill.js`, `scripts/skill-graph-drift.js`). They replace the v5 model of scattered log files (`eval-history.jsonl`, `routing-misses.jsonl`, `.opencode/progress/skill-audit-*`, `health-ledger.jsonl`, `findings/*.md`).
+
+**Do not hand-author these fields.** The next `audit` run will overwrite hand-edits with the loop's authoritative values. If you need to set an initial state, use `UNKNOWN` (the documented initial value for each enum field).
+
+---
+
+## `last_audited`
+
+**Purpose.** ISO date (YYYY-MM-DD) the `audit` command last ran against this skill. Written by `scripts/skill/skill-audit.js`. Loop priority uses this to pick the stalest skill next.
+
+**Rules.**
+- Optional. Initial state: absent or unset.
+- Written by the audit loop, not by hand.
+- Distinct from `freshness` (the author's claim of content-level review) and `drift_check.last_verified` (the truth-source verification timestamp). The three dates measure different things and are not interchangeable.
+
+**Example.**
+```yaml
+last_audited: "2026-05-17"
+```
+
+**When to use.** Written automatically by the audit loop.
+
+**When NOT to use.** Never hand-author. If you find this field hand-edited, treat it as untrusted and re-run `audit` to refresh it.
+
+---
+
+## `last_changed`
+
+**Purpose.** ISO date (YYYY-MM-DD) the SKILL.md body or frontmatter was last edited. Written automatically by `improve` operations.
+
+**Rules.**
+- Optional. Initial state: absent or unset.
+- Written by the audit loop's `improve` operation, not by hand.
+- Distinct from `freshness` (review claim). `last_changed` is the editor's footprint; `freshness` is the reviewer's footprint. A skill can have a recent `last_changed` and an old `freshness` (recent edit, not yet reviewed) — that's a real and meaningful state.
+
+**Example.**
+```yaml
+last_changed: "2026-05-15"
+```
+
+**When to use.** Written automatically.
+
+**When NOT to use.** Never hand-author.
+
+---
+
+## `audit_verdict`
+
+**Purpose.** Aggregate result of the most recent `audit` run. Lives on the skill itself instead of in a separate audits/<skill>/verdict.md, so the audit fingerprint is portable with the skill.
+
+**Allowed values.**
+
+| Value | Meaning |
+|---|---|
+| `PASS` | All audit checks passed, no fixes needed |
+| `PASS_WITH_FIXES` | Audit passed after automated fixes were applied during the run |
+| `PARTIAL` | Some audit checks passed, some need attention; not a hard failure |
+| `FAIL` | One or more audit checks failed; the skill needs human intervention |
+| `UNKNOWN` | Initial state — no audit has run yet |
+
+**Rules.**
+- Optional. Initial state: `UNKNOWN` (or absent).
+- Written by `scripts/skill/skill-audit.js`.
+- Combines `lint_verdict`, `drift_status`, and (when run with `--graded`) the seven dimension scores.
+
+**Example.**
+```yaml
+audit_verdict: PASS
+```
+
+**When to use.** Written automatically.
+
+**When NOT to use.** Never hand-author.
+
+---
+
+## `eval_score`
+
+**Purpose.** Latest aggregate eval grade on a 0.0–5.0 scale. Replaces the read-the-log dance for knowing how this skill scored.
+
+**Rules.**
+- Optional. Number between 0.0 and 5.0 inclusive.
+- Written by `scripts/skill/evaluate-skill.js`.
+- When `evals/comprehension.json` exists, the comprehension grader's score lands here; otherwise the standard eval-suite score.
+- Use `eval_failed_ids` to inspect the failing cases when `eval_score` is below the threshold.
+
+**Example.**
+```yaml
+eval_score: 4.2
+```
+
+**When to use.** Written automatically.
+
+**When NOT to use.** Never hand-author. A hand-stamped score is not evidence; the audit loop is the only authoritative source.
+
+---
+
+## `eval_failed_ids`
+
+**Purpose.** Eval IDs that failed in the most recent run. Empty array when clean. Surfaces failures without forcing readers to crawl `eval-history.jsonl`.
+
+**Rules.**
+- Optional. Array of strings.
+- Populated alongside `eval_score` by the eval runner.
+- Empty `[]` is the clean state — distinct from absent (no eval has run yet).
+
+**Example.**
+```yaml
+eval_failed_ids:
+  - "comprehension-boundary-mechanism"
+  - "comprehension-misconception-specificity"
+```
+
+**When to use.** Written automatically.
+
+**When NOT to use.** Never hand-author.
+
+---
+
+## `lint_verdict`
+
+**Purpose.** Result of the most recent deterministic-lint pass against this skill. Schema validation, relation-target existence, archetype section presence, routing quality.
+
+**Allowed values.**
+
+| Value | Meaning |
+|---|---|
+| `PASS` | Zero lint errors. Warnings do not flip the verdict. |
+| `FAIL` | One or more lint errors. The skill is not eligible for the manifest until fixed. |
+| `UNKNOWN` | Initial state — no lint has run yet |
+
+**Rules.**
+- Optional. Initial state: `UNKNOWN` (or absent).
+- Written by `scripts/skill/skill-lint.js`.
+- Warnings do not flip the verdict to FAIL — only hard errors do.
+
+**Example.**
+```yaml
+lint_verdict: PASS
+```
+
+**When to use.** Written automatically.
+
+**When NOT to use.** Never hand-author.
+
+---
+
+## `drift_status`
+
+**Purpose.** Current truth-source drift status, mirroring the `scripts/skill-graph-drift.js` sentinel verdicts. Read by the loop to prioritise re-grounding work.
+
+**Allowed values.**
+
+| Value | Meaning |
+|---|---|
+| `OK` | Live truth-source hashes match the recorded baseline |
+| `DRIFT` | One or more truth-source live hashes differ from the recorded baseline — content has changed |
+| `BROKEN` | A declared truth source file is missing from disk |
+| `STALE` | Today exceeds `drift_check.last_verified + lifecycle.stale_after_days` |
+| `NO_BASELINE` | Local truth sources are declared but no hashes have been recorded yet |
+| `EXTERNAL_UNHASHED` | URL truth sources are valid but are not fetched by the zero-dependency sentinel |
+| `UNKNOWN` | Initial state — no drift check has run yet |
+
+**Rules.**
+- Optional. Initial state: `UNKNOWN` (or absent).
+- Written by `scripts/skill-graph-drift.js`.
+- Mirrors the same enum the drift sentinel emits; consumers can read this field instead of re-running the sentinel.
+
+**Example.**
+```yaml
+drift_status: OK
+```
+
+**When to use.** Written automatically.
+
+**When NOT to use.** Never hand-author.

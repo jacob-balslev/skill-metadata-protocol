@@ -2,7 +2,7 @@
 
 > The normative specification for `SKILL.md` — the portable skill packaging format used by AI agent systems.
 
-**npm**: `@skill-graph/protocol` · **Version**: 1.1.0 · **Schema version**: 4 · **License**: Apache-2.0
+**npm**: `@skill-graph/protocol` · **Version**: 1.3.0 · **Schema version**: 6 · **License**: Apache-2.0
 
 This repo contains the protocol specification, JSON schemas, and documentation only. It has no runtime tooling.
 
@@ -13,7 +13,7 @@ This repo contains the protocol specification, JSON schemas, and documentation o
 | Path | Purpose |
 |------|---------|
 | `SKILL_METADATA_PROTOCOL.md` | The full normative specification (field definitions, requirements, examples) |
-| `schemas/` | JSON Schema files — v2, v3, v4, v5 pinned versions + unversioned current (tracks v5) |
+| `schemas/` | JSON Schema files — v2, v3, v4, v5, v6 pinned versions + unversioned current (tracks v6) |
 | `docs/` | Deep-dive documentation: field reference, primer, adoption guide, conformance, glossary, ADRs |
 | `examples/` | Authoring template and sample manifest |
 
@@ -34,7 +34,7 @@ const schema = require('@skill-graph/protocol/schemas/skill.schema.json');
 Or reference directly in your JSON Schema tooling:
 
 ```
-node_modules/@skill-graph/protocol/schemas/skill.v5.schema.json
+node_modules/@skill-graph/protocol/schemas/skill.v6.schema.json
 ```
 
 ## Quick start

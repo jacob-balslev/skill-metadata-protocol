@@ -1,11 +1,12 @@
 # Skill Metadata Protocol
 
 > **Version:** 1.3.0 (schema_version 6, Skill Graph 0.6.0)
-> **Machine-readable schema:** `schemas/skill.v6.schema.json` (v4 and v5 schemas remain for back-compat reads via `normalizeFrontmatter()`)
-> **Migration from v5:** `docs/migrations/v5-to-v6.md`
-> **Migration from v4:** `docs/migrations/v4-to-v5.md`
-> **Detailed field reference:** `docs/field-reference.md`
-> **Full semantics + design rationale:** `docs/skill-metadata-protocol.md`
+> **⚠️ Docs-only mirror** — Source consolidated into [@skill-graph/cli](https://www.npmjs.com/package/@skill-graph/cli) as of v0.5.6.
+> **Machine-readable schema:** [`https://github.com/jacob-balslev/skill-graph/blob/main/lib/schemas/skill.v6.schema.json`](https://github.com/jacob-balslev/skill-graph/blob/main/lib/schemas/skill.v6.schema.json)
+> **Migration from v5:** [`https://github.com/jacob-balslev/skill-graph/blob/main/docs/migrations/v5-to-v6.md`](https://github.com/jacob-balslev/skill-graph/blob/main/docs/migrations/v5-to-v6.md)
+> **Migration from v4:** [`https://github.com/jacob-balslev/skill-graph/blob/main/docs/migrations/v4-to-v5.md`](https://github.com/jacob-balslev/skill-graph/blob/main/docs/migrations/v4-to-v5.md)
+> **Detailed field reference:** `docs/field-reference.md` (still in this mirror)
+> **Full semantics + design rationale:** `docs/skill-metadata-protocol.md` (still in this mirror)
 
 This document is the top-level public contract for the Skill Metadata Protocol frontmatter format — the **normative spec**. It defines which fields are required, what each field means in operational terms, which fields are authored by humans vs computed by tooling, and how to migrate from older schema versions. Skill Graph is the library-level system that consumes this contract. The prose is terse and boundary-aware: every clause is a rule a consumer or author can verify against the schema and against `scripts/skill-lint.js`.
 
@@ -34,7 +35,7 @@ This document is the top-level public contract for the Skill Metadata Protocol f
 
 ## Overview
 
-Every skill is a single `SKILL.md` file with a YAML frontmatter block. The frontmatter is validated by `skill-lint.js` against `schemas/skill.v6.schema.json`. The `generate-manifest.js` script reads frontmatter from all skill files and emits a single `skills.manifest.json`.
+Every skill is a single `SKILL.md` file with a YAML frontmatter block. The frontmatter is validated by `skill-lint.js` against the [v6 schema](https://github.com/jacob-balslev/skill-graph/blob/main/lib/schemas/skill.v6.schema.json). The `generate-manifest.js` script reads frontmatter from all skill files and emits a single `skills.manifest.json`.
 
 The contract has one runtime model: one `SKILL.md` per skill, one manifest, one lint pass. There is no closed/open split, no private control plane, and no enterprise-only fields.
 
@@ -48,7 +49,7 @@ All thirteen fields in this group are required. A skill missing any of them fail
 
 | Field | Type | Purpose |
 |---|---|---|
-| `schema_version` | integer `6` | Signals the contract version. Must be `6` for all v6 skills. See `docs/migrations/v5-to-v6.md`. |
+| `schema_version` | integer `6` | Signals the contract version. Must be `6` for all v6 skills. See [v5→v6 migration](https://github.com/jacob-balslev/skill-graph/blob/main/docs/migrations/v5-to-v6.md). |
 | `name` | string | Stable identifier. Used for routing and `relations.*` targets. |
 | `description` | string (≥20 chars) | Routing contract — tells the router when to activate this skill. |
 | `version` | semver string | Skill content version (e.g. `1.2.0`). Bumped by the author. |
@@ -163,7 +164,7 @@ allowed-tools   # space-separated tool allowlist
 - A browse facet — answers the single question: *Where should a human browse to find this skill first?*
 - Renamed from v3 `browse_category`; use `category` in all v4+ skills.
 - For hierarchical taxonomy, use the optional `domain` field with slash-delimited segments.
-- **Closed enum as of schema_version 5** (retained in v6); enforced at the schema level by `enum` constraint in `schemas/skill.v6.schema.json` AND at the lint level by `scripts/lint/check-category-enum.js`. Framed as a browse facet, not ontology truth. Cross-cutting truth lives in `relations.related`. The six values:
+- **Closed enum as of schema_version 5** (retained in v6); enforced at the schema level by `enum` constraint in the [v6 schema](https://github.com/jacob-balslev/skill-graph/blob/main/lib/schemas/skill.v6.schema.json) AND at the lint level by `scripts/lint/check-category-enum.js`. Framed as a browse facet, not ontology truth. Cross-cutting truth lives in `relations.related`. The six values:
 
   | Value | Definition |
   |---|---|
@@ -485,7 +486,7 @@ The manifest generator (`scripts/generate-manifest.js`) reads the authored front
 - `activation` — compiled block merging `triggers`, `keywords`, `paths`, `examples`, and `anti_examples` from frontmatter.
 - `health` — compiled block merging `eval_artifacts`, `eval_state`, `routing_eval`, `comprehension_state`, `eval_last_run`, `freshness`, and `drift_check`.
 
-The manifest schema is at `schemas/manifest.schema.json`. For the complete authored-to-generated field rename map and loss policy, see `docs/manifest-field-mapping.md`.
+The manifest schema is at [`https://github.com/jacob-balslev/skill-graph/blob/main/lib/schemas/manifest.schema.json`](https://github.com/jacob-balslev/skill-graph/blob/main/lib/schemas/manifest.schema.json). For the complete authored-to-generated field rename map and loss policy, see `docs/manifest-field-mapping.md`.
 
 ### Normalized during manifest generation
 
@@ -507,7 +508,7 @@ Some legacy scope and type values are normalized by the manifest generator to th
 
 ### v5 -> v6 (current)
 
-Detailed migration guide: [`docs/migrations/v5-to-v6.md`](docs/migrations/v5-to-v6.md).
+Detailed migration guide: [`https://github.com/jacob-balslev/skill-graph/blob/main/docs/migrations/v5-to-v6.md`](https://github.com/jacob-balslev/skill-graph/blob/main/docs/migrations/v5-to-v6.md).
 
 The codemod for the schema_version bump (after authoring the flat Understanding fields):
 
@@ -519,7 +520,7 @@ find skills -name SKILL.md -exec sed -i '' 's/schema_version: "5"/schema_version
 | What changed | v5 form | v6 form |
 |---|---|---|
 | Schema version | `schema_version: 5` | `schema_version: 6` |
-| Schema file | `schemas/skill.v5.schema.json` | `schemas/skill.v6.schema.json` (v5 schema retained for back-compat reads) |
+| Schema file | [`skill.v5.schema.json`](https://github.com/jacob-balslev/skill-graph/blob/main/lib/schemas/skill.v5.schema.json) | [`skill.v6.schema.json`](https://github.com/jacob-balslev/skill-graph/blob/main/lib/schemas/skill.v6.schema.json) (v5 schema retained for back-compat reads) |
 | Concept teaching block | nested `concept: { definition, mental_model, purpose, boundary, taxonomy, analogy, misconception }` | five flat top-level fields: `mental_model`, `purpose`, `boundary`, `analogy`, `misconception`. `definition` is covered by `description`; `taxonomy` is covered by `category` + `relations.broader`. Body `## Concept Card` section retired. |
 | Health Block | absent — audit fingerprint scattered across `eval-history.jsonl`, `routing-misses.jsonl`, `health-ledger.jsonl`, `.opencode/progress/skill-audit-*`, `findings/*.md` | seven flat top-level fields stamped by the audit loop: `last_audited`, `last_changed`, `audit_verdict`, `eval_score`, `eval_failed_ids`, `lint_verdict`, `drift_status` |
 | `comprehension_state: present` rule | required nested `concept` block | requires EITHER the five flat Understanding fields OR (for v5 back-compat) the nested `concept` block — enforced via `anyOf` clause in v6 schema's `allOf` rule |
@@ -529,7 +530,7 @@ The legacy nested `concept` block remains accepted in v6 for v5 skills not yet m
 
 ### v4 -> v5 (previous)
 
-Detailed migration guide: [`docs/migrations/v4-to-v5.md`](docs/migrations/v4-to-v5.md).
+Detailed migration guide: [`https://github.com/jacob-balslev/skill-graph/blob/main/docs/migrations/v4-to-v5.md`](https://github.com/jacob-balslev/skill-graph/blob/main/docs/migrations/v4-to-v5.md).
 
 The codemod for the schema_version bump (after re-routing categories):
 
@@ -541,7 +542,7 @@ find skills -name SKILL.md -exec sed -i '' 's/schema_version: "4"/schema_version
 | What changed | v4 form | v5 form |
 |---|---|---|
 | Schema version | `schema_version: 4` | `schema_version: 5` |
-| Schema file | `schemas/skill.v4.schema.json` (open-ended `category` string) | `schemas/skill.v5.schema.json` (closed `category` enum of 6 values) |
+| Schema file | [`skill.v4.schema.json`](https://github.com/jacob-balslev/skill-graph/blob/main/lib/schemas/skill.v4.schema.json) (open-ended `category` string) | [`skill.v5.schema.json`](https://github.com/jacob-balslev/skill-graph/blob/main/lib/schemas/skill.v5.schema.json) (closed `category` enum of 6 values) |
 | `category` enum | open-ended string; values included `knowledge`, `frontend`, `ai-engineering`, `integration`, `integrations`, `data`, `workflow`, `security` | closed enum: `foundations` \| `engineering` \| `design` \| `quality` \| `agent` \| `product` |
 | `foundations` gate | implicit | explicit anti-junk-drawer rule: target 8–15 skills; cannot default here; must clear epistemic-precondition test |
 | `quality` framing | one of several categories | promoted to 6th category for property-as-category (a11y, perf, security, testing, type-safety, observability) per A′ Rule 2 |
@@ -606,4 +607,4 @@ The contract enforces the following invariants. Any change to the schema or tool
 
 ---
 
-*See `docs/skill-metadata-protocol.md` for full design rationale, overlay composition precedence, and schema versioning policy. See `docs/field-reference.md` for one section per field with examples. See `schemas/skill.v6.schema.json` for the machine-enforceable version of this contract.*
+*See `docs/skill-metadata-protocol.md` for full design rationale, overlay composition precedence, and schema versioning policy. See `docs/field-reference.md` for one section per field with examples. See the [v6 schema](https://github.com/jacob-balslev/skill-graph/blob/main/lib/schemas/skill.v6.schema.json) for the machine-enforceable version of this contract.*

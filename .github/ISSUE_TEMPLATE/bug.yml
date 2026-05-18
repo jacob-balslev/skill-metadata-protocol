@@ -1,0 +1,60 @@
+name: Bug report
+description: Report a defect in the protocol, schemas, or docs
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Please fill in the fields below so we can reproduce and triage it.
+  - type: input
+    id: pkg-version
+    attributes:
+      label: Package version
+      description: "`@skill-graph/protocol` version (from `npm ls @skill-graph/protocol` or `package.json`)"
+      placeholder: "e.g. 1.3.0"
+    validations:
+      required: true
+  - type: input
+    id: schema-version
+    attributes:
+      label: Schema version
+      description: Which `schema_version` is the failing skill or manifest using?
+      placeholder: "e.g. 6"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Minimal commands or a minimal `SKILL.md` frontmatter that triggers the issue.
+      placeholder: |
+        1. Author a SKILL.md with the frontmatter below
+        2. Run `npx ajv validate -s schemas/skill.v6.schema.json -d skill.md`
+        3. ...
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the full error message or validation output if any.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: |
+        - OS: macOS 15.5 / Ubuntu 24.04 / ...
+        - Node: 22.x
+        - Agent runtime (if relevant): Claude Code 4.7 / Codex / Gemini / ...
+    validations:
+      required: false
